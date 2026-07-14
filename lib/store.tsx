@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
   Category,
@@ -220,8 +220,8 @@ interface StoreContextValue {
   addCategory: (name: string, department: Department) => void
   deleteCategory: (id: string) => void
   resetCatalog: () => void
-  updatePaymentMethod: (id: PaymentMethodId, changes: Partial<Omit<PaymentMethod, 'id'>>) => void
-  updatePaymentField: (methodId: PaymentMethodId, fieldKey: string, value: string) => void
+  updatePaymentMethod: (id: PaymentMethodId, changes: Partial<Omit<PaymentMethod, 'id'>>) => Promise<void>
+  updatePaymentField: (methodId: PaymentMethodId, fieldKey: string, value: string) => Promise<void>
   updateWhatsapp: (value: string) => void
   resetPaymentMethods: () => void
   // cart
@@ -261,6 +261,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP)
   const [isAdmin, setIsAdmin] = useState(false)
+  const paymentMethodUpdateVersion = useRef(0)
+  const paymentFieldUpdateVersion = useRef(0)
 
   useEffect(() => {
     const loadStore = async () => {
@@ -378,51 +380,76 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .catch((error) => console.error(error))
   }, [])
 
-  const updatePaymentMethod = useCallback(
-    (id: PaymentMethodId, changes: Partial<Omit<PaymentMethod, 'id'>>) => {
-      fetch(`/api/payment-methods/${id}`, {
+  const updatePaymentMethod = useCallback(async (id: PaymentMethodId, changes: Partial<Omit<PaymentMethod, 'id'>>) => {
+    const requestId = ++paymentMethodUpdateVersion.current
+
+    setPaymentMethods((prev) =>
+      prev.map((method) =>
+        method.id === id
+          ? {
+              ...method,
+              ...changes,
+              fields: changes.fields ?? method.fields,
+            }
+          : method,
+      ),
+    )
+
+    try {
+      const response = await fetch(`/api/payment-methods/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(changes),
       })
-        .then((response) => {
-          if (!response.ok) throw new Error('No se pudo actualizar el método de pago.')
-          return response.json() as Promise<PaymentMethod>
-        })
-        .then((updated) =>
-          setPaymentMethods((prev) => prev.map((method) => (method.id === id ? updated : method))),
-        )
-        .catch((error) => console.error(error))
-    },
-    [],
-  )
 
-  const updatePaymentField = useCallback(
-    (methodId: PaymentMethodId, fieldKey: string, value: string) => {
-      fetch(`/api/payment-methods/${methodId}`, {
+      if (!response.ok) {
+        throw new Error('No se pudo actualizar el método de pago.')
+      }
+
+      const updated = (await response.json()) as PaymentMethod
+
+      if (requestId === paymentMethodUpdateVersion.current) {
+        setPaymentMethods((prev) => prev.map((method) => (method.id === id ? updated : method)))
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
+
+  const updatePaymentField = useCallback(async (methodId: PaymentMethodId, fieldKey: string, value: string) => {
+    const requestId = ++paymentFieldUpdateVersion.current
+
+    setPaymentMethods((prev) =>
+      prev.map((method) =>
+        method.id === methodId
+          ? {
+              ...method,
+              fields: method.fields.map((field) =>
+                field.key === fieldKey ? { ...field, value } : field,
+              ),
+            }
+          : method,
+      ),
+    )
+
+    try {
+      const response = await fetch(`/api/payment-methods/${methodId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fieldKey, value }),
       })
-        .then((response) => {
-          if (!response.ok) throw new Error('No se pudo actualizar el campo de pago.')
-          setPaymentMethods((prev) =>
-            prev.map((method) =>
-              method.id === methodId
-                ? {
-                    ...method,
-                    fields: method.fields.map((field) =>
-                      field.key === fieldKey ? { ...field, value } : field,
-                    ),
-                  }
-                : method,
-            ),
-          )
-        })
-        .catch((error) => console.error(error))
-    },
-    [],
-  )
+
+      if (!response.ok) {
+        throw new Error('No se pudo actualizar el campo de pago.')
+      }
+
+      if (requestId !== paymentFieldUpdateVersion.current) {
+        return
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
 
   const resetPaymentMethods = useCallback(() => {
     fetch('/api/reset-payments', { method: 'POST' })
