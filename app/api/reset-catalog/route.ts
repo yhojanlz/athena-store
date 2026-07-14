@@ -4,6 +4,6 @@ import { resetCatalog } from '@/lib/db'
 export const runtime = 'nodejs'
 
 export async function POST() {
-  resetCatalog()
+  await resetCatalog()
   return NextResponse.json({ success: true })
 }

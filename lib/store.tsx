@@ -214,8 +214,8 @@ interface StoreContextValue {
   paymentMethods: PaymentMethod[]
   whatsapp: string
   // catalog (admin)
-  addProduct: (product: Omit<Product, 'id'>) => void
-  updateProduct: (id: string, changes: Partial<Omit<Product, 'id'>>) => void
+  addProduct: (product: Omit<Product, 'id'>) => Promise<Product>
+  updateProduct: (id: string, changes: Partial<Omit<Product, 'id'>>) => Promise<Product>
   deleteProduct: (id: string) => void
   addCategory: (name: string, department: Department) => void
   deleteCategory: (id: string) => void
@@ -295,32 +295,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (ready) window.localStorage.setItem(LS_KEYS.session, JSON.stringify(isAdmin))
   }, [isAdmin, ready])
 
-  const addProduct = useCallback((product: Omit<Product, 'id'>) => {
-    fetch('/api/products', {
+  const addProduct = useCallback(async (product: Omit<Product, 'id'>) => {
+    const response = await fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(product),
     })
-      .then((response) => {
-        if (!response.ok) throw new Error('No se pudo guardar el producto.')
-        return response.json() as Promise<Product>
-      })
-      .then((created) => setProducts((prev) => [created, ...prev]))
-      .catch((error) => console.error(error))
+
+    if (!response.ok) {
+      throw new Error('No se pudo guardar el producto.')
+    }
+
+    const created = (await response.json()) as Product
+    setProducts((prev) => [created, ...prev])
+    return created
   }, [])
 
-  const updateProduct = useCallback((id: string, changes: Partial<Omit<Product, 'id'>>) => {
-    fetch(`/api/products/${id}`, {
+  const updateProduct = useCallback(async (id: string, changes: Partial<Omit<Product, 'id'>>) => {
+    const response = await fetch(`/api/products/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes),
     })
-      .then((response) => {
-        if (!response.ok) throw new Error('No se pudo actualizar el producto.')
-        return response.json() as Promise<Product>
-      })
-      .then((updated) => setProducts((prev) => prev.map((p) => (p.id === id ? updated : p))))
-      .catch((error) => console.error(error))
+
+    if (!response.ok) {
+      throw new Error('No se pudo actualizar el producto.')
+    }
+
+    const updated = (await response.json()) as Product
+    setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)))
+    return updated
   }, [])
 
   const deleteProduct = useCallback((id: string) => {

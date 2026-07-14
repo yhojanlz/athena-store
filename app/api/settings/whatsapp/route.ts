@@ -9,6 +9,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Número de WhatsApp inválido.' }, { status: 400 })
   }
 
-  updateWhatsapp(String(body.value))
+  await updateWhatsapp(String(body.value))
   return NextResponse.json({ success: true })
 }

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Datos de producto incompletos.' }, { status: 400 })
   }
 
-  const product = addProduct({
+  const product = await addProduct({
     name: String(body.name).trim(),
     price: body.price,
     categoryId: String(body.categoryId),
