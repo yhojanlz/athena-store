@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,6 +26,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
   const [price, setPrice] = useState(product ? String(product.price) : '')
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? '')
   const [image, setImage] = useState(product?.image ?? '')
+  const imageInputRef = useRef<HTMLInputElement | null>(null)
   const [description, setDescription] = useState(product?.description ?? '')
   const [sizes, setSizes] = useState(product?.sizes.join(', ') ?? 'S, M, L')
   const [error, setError] = useState<string | null>(null)
@@ -43,9 +44,9 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const parsedPrice = Number.parseFloat(price)
+    const parsedPrice = Number.parseFloat(price.replace(',', '.'))
     if (!name.trim() || Number.isNaN(parsedPrice) || parsedPrice < 0) {
       setError('Revisa el nombre y el precio.')
       return
@@ -54,6 +55,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
       setError('Selecciona una categoría.')
       return
     }
+
     const data = {
       name: name.trim(),
       price: parsedPrice,
@@ -65,12 +67,18 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
         .map((s) => s.trim())
         .filter(Boolean),
     }
-    if (product) {
-      updateProduct(product.id, data)
-    } else {
-      addProduct(data)
+
+    try {
+      if (product) {
+        await updateProduct(product.id, data)
+      } else {
+        await addProduct(data)
+      }
+      onDone()
+    } catch (error) {
+      console.error(error)
+      setError('No se pudo guardar el producto. Intenta de nuevo más tarde.')
     }
-    onDone()
   }
 
   const departmentLabel = (dep: string) => DEPARTMENTS.find((d) => d.id === dep)?.label ?? dep
@@ -94,6 +102,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
           <Input
             id="pf-price"
             type="number"
+            inputMode="decimal"
             min="0"
             step="0.01"
             required
@@ -121,15 +130,32 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="pf-image">Imagen del producto</Label>
-        <Input
+        <input
           id="pf-image"
+          ref={imageInputRef}
           type="file"
           accept="image/*"
+          className="mt-1 block w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           onChange={handleFileChange}
         />
-        <p className="text-xs text-muted-foreground">
-          Selecciona una imagen desde tu dispositivo. Si no subes ninguna se usará una imagen de relleno.
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-2"
+            onClick={() => {
+              setImage('')
+              if (imageInputRef.current) {
+                imageInputRef.current.value = ''
+              }
+            }}
+          >
+            Eliminar imagen
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Selecciona una imagen desde tu dispositivo. Si no subes ninguna se usará una imagen de relleno.
+          </p>
+        </div>
         {(image || product?.image) && (
           <div className="mt-2 overflow-hidden rounded-md border border-border bg-secondary">
             <img

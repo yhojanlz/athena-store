@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { ArrowLeft, LogOut, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
@@ -158,12 +157,10 @@ export function AdminDashboard() {
                     <Card>
                       <CardContent className="flex items-center gap-4">
                         <div className="relative aspect-[3/4] w-14 shrink-0 overflow-hidden rounded-sm bg-secondary">
-                          <Image
+                          <img
                             src={product.image || '/placeholder.svg'}
                             alt={product.name}
-                            fill
-                            sizes="56px"
-                            className="object-cover"
+                            className="h-full w-full object-cover"
                           />
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-0.5">

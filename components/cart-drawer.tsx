@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { Minus, Plus, Trash2 } from 'lucide-react'
 import { CheckoutDialog } from '@/components/checkout-dialog'
 import { Button } from '@/components/ui/button'
@@ -57,12 +56,10 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                   {index > 0 && <Separator />}
                   <div className="flex gap-4 py-4">
                     <div className="relative aspect-[3/4] w-20 shrink-0 overflow-hidden bg-secondary">
-                      <Image
+                      <img
                         src={item.product.image || '/placeholder.svg'}
                         alt={item.product.name}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
+                        className="h-full w-full object-cover"
                       />
                     </div>
                     <div className="flex flex-1 flex-col gap-1">

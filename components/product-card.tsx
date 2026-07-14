@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatPrice, useStore } from '@/lib/store'
@@ -26,12 +25,10 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
   return (
     <article className="group flex flex-col gap-3">
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
-        <Image
+        <img
           src={product.image || '/placeholder.svg'}
           alt={product.name}
-          fill
-          sizes="(max-width: 768px) 50vw, 25vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
       </div>
 
