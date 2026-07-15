@@ -525,7 +525,7 @@ function mapProduct(row: any): Product {
     id: row.id,
     name: row.name,
     price: Number(row.price),
-    categoryId: row.categoryId,
+    categoryId: row.categoryId ?? row.categoryid ?? '',
     image: row.image,
     description: row.description,
     sizes: parseSizes(row.sizes),
