@@ -413,7 +413,7 @@ async function seedDefaults() {
         try {
           for (const product of DEFAULT_PRODUCTS) {
             await client.query(
-              'INSERT INTO products (id, name, price, categoryId, image, description, sizes) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+              'INSERT INTO products (id, name, price, categoryId, image, description, sizes) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)',
               [
                 product.id,
                 product.name,
@@ -421,7 +421,7 @@ async function seedDefaults() {
                 product.categoryId,
                 product.image,
                 product.description,
-                product.sizes,
+                JSON.stringify(product.sizes),
               ],
             )
           }
@@ -576,10 +576,11 @@ export async function getStore() {
 export async function addProduct(product: Omit<Product, 'id'>) {
   await ensureStorage()
   const id = `p-${Date.now().toString(36)}`
+  const sizesValue = usePostgres ? JSON.stringify(product.sizes) : JSON.stringify(product.sizes)
   if (usePostgres) {
     await runQuery(
-      'INSERT INTO products (id, name, price, categoryId, image, description, sizes) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [id, product.name, product.price, product.categoryId, product.image, product.description, product.sizes],
+      'INSERT INTO products (id, name, price, categoryId, image, description, sizes) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)',
+      [id, product.name, product.price, product.categoryId, product.image, product.description, sizesValue],
     )
   } else {
     await runQuery(
@@ -603,15 +604,16 @@ export async function updateProduct(id: string, changes: Partial<Omit<Product, '
     description: changes.description !== undefined ? changes.description : existing.description,
     sizes: changes.sizes !== undefined ? changes.sizes : parseSizes(existing.sizes),
   }
+  const sizesValue = JSON.stringify(parseSizes(updated.sizes))
   if (usePostgres) {
     await runQuery(
-      'UPDATE products SET name = $1, price = $2, categoryId = $3, image = $4, description = $5, sizes = $6 WHERE id = $7',
-      [updated.name, Number(updated.price), updated.categoryId, updated.image, updated.description, updated.sizes, id],
+      'UPDATE products SET name = $1, price = $2, categoryId = $3, image = $4, description = $5, sizes = $6::jsonb WHERE id = $7',
+      [updated.name, Number(updated.price), updated.categoryId, updated.image, updated.description, sizesValue, id],
     )
   } else {
     await runQuery(
       'UPDATE products SET name = ?, price = ?, categoryId = ?, image = ?, description = ?, sizes = ? WHERE id = ?',
-      [updated.name, Number(updated.price), updated.categoryId, updated.image, updated.description, JSON.stringify(parseSizes(updated.sizes)), id],
+      [updated.name, Number(updated.price), updated.categoryId, updated.image, updated.description, sizesValue, id],
     )
   }
   return {
@@ -662,8 +664,8 @@ export async function resetCatalog() {
       }
       for (const product of DEFAULT_PRODUCTS) {
         await client.query(
-          'INSERT INTO products (id, name, price, categoryId, image, description, sizes) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [product.id, product.name, product.price, product.categoryId, product.image, product.description, product.sizes],
+          'INSERT INTO products (id, name, price, categoryId, image, description, sizes) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)',
+          [product.id, product.name, product.price, product.categoryId, product.image, product.description, JSON.stringify(product.sizes)],
         )
       }
     })
